@@ -144,33 +144,6 @@ void Panda3DImGui::setup_style(Style style)
     }
 }
 
-void Panda3DImGui::enable_file_drop()
-{
-    // register file drop
-#if defined(__WIN32__) || defined(_WIN32)
-    enable_file_drop_ = true;
-    if (window_.is_valid_pointer())
-    {
-        DragAcceptFiles((HWND)window_->get_window_handle()->get_int_handle(), TRUE);
-        window_proc_ = std::make_unique<WindowProc>(*this);
-        window_->add_window_proc(window_proc_.get());
-    }
-#endif
-}
-
-void Panda3DImGui::on_window_resized()
-{
-    if (window_.is_valid_pointer())
-        on_window_resized(LVecBase2(static_cast<float>(window_->get_x_size()), static_cast<float>(window_->get_y_size())));
-}
-
-void Panda3DImGui::on_window_resized(const LVecBase2& size)
-{
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(size[0], size[1]);
-    //io.DisplayFramebufferScale;
-}
-
 void Panda3DImGui::setup_geom()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -190,67 +163,6 @@ void Panda3DImGui::setup_geom()
     ));
 }
 
-NodePath Panda3DImGui::create_geomnode(const GeomVertexData* vdata)
-{
-    ImGuiIO& io = ImGui::GetIO();
-
-    PT(GeomTriangles) prim = new GeomTriangles(GeomEnums::UsageHint::UH_stream);
-
-    static_assert(
-        sizeof(ImDrawIdx) == sizeof(uint16_t) ||
-        sizeof(ImDrawIdx) == sizeof(uint32_t),
-        "Type of ImDrawIdx is not uint16_t or uint32_t. Update below code!"
-        );
-    if (sizeof(ImDrawIdx) == sizeof(uint16_t))
-        prim->set_index_type(GeomEnums::NumericType::NT_uint16);
-    else if (sizeof(ImDrawIdx) == sizeof(uint32_t))
-        prim->set_index_type(GeomEnums::NumericType::NT_uint32);
-
-    prim->close_primitive();
-
-    PT(Geom) geom = new Geom(vdata);
-    geom->add_primitive(prim);
-
-    PT(GeomNode) geom_node = new GeomNode("imgui-geom");
-    geom_node->add_geom(geom, RenderState::make_empty());
-
-    return NodePath(geom_node);
-}
-
-void Panda3DImGui::setup_font()
-{
-    ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
-    setup_font_texture();
-}
-
-void Panda3DImGui::setup_font(const char* font_filename, float font_size)
-{
-    ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontFromFileTTF(font_filename, font_size);
-    setup_font_texture();
-}
-
-void Panda3DImGui::setup_font_texture()
-{
-    ImGuiIO& io = ImGui::GetIO();
-
-    unsigned char* pixels;
-    int width, height;
-    io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
-
-    font_texture_ = Texture::make_texture();
-    font_texture_->set_name("imgui-font-texture");
-    font_texture_->setup_2d_texture(width, height, Texture::ComponentType::T_unsigned_byte, Texture::Format::F_red);
-    font_texture_->set_minfilter(SamplerState::FilterType::FT_linear);
-    font_texture_->set_magfilter(SamplerState::FilterType::FT_linear);
-
-    PTA_uchar ram_image = font_texture_->make_ram_image();
-    std::memcpy(ram_image.p(), pixels, width * height * sizeof(decltype(*pixels)));
-
-    io.Fonts->TexID = font_texture_.p();
-}
-
 void Panda3DImGui::setup_shader(const Filename& shader_dir_path)
 {
     root_.set_shader(Shader::load(
@@ -265,6 +177,20 @@ void Panda3DImGui::setup_shader(const Filename& shader_dir_path)
 void Panda3DImGui::setup_shader(Shader* shader)
 {
     root_.set_shader(shader);
+}
+
+void Panda3DImGui::setup_font()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontDefault();
+    setup_font_texture();
+}
+
+void Panda3DImGui::setup_font(const char* font_filename, float font_size)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontFromFileTTF(font_filename, font_size);
+    setup_font_texture();
 }
 
 void Panda3DImGui::setup_event()
@@ -297,22 +223,102 @@ void Panda3DImGui::setup_event()
     io.KeyMap[ImGuiKey_Z] = KeyboardButton::ascii_key('z').get_index();
 }
 
+void Panda3DImGui::enable_file_drop()
+{
+    // register file drop
+#if defined(__WIN32__) || defined(_WIN32)
+    enable_file_drop_ = true;
+    if (window_.is_valid_pointer())
+    {
+        DragAcceptFiles((HWND)window_->get_window_handle()->get_int_handle(), TRUE);
+        window_proc_ = std::make_unique<WindowProc>(*this);
+        window_->add_window_proc(window_proc_.get());
+    }
+#endif
+}
+
+void Panda3DImGui::on_window_resized()
+{
+    if (window_.is_valid_pointer())
+        on_window_resized(LVecBase2(static_cast<float>(window_->get_x_size()), static_cast<float>(window_->get_y_size())));
+}
+
+void Panda3DImGui::on_window_resized(const LVecBase2& size)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2(size[0], size[1]);
+    //io.DisplayFramebufferScale;
+}
+
+void Panda3DImGui::on_button_down_or_up(const ButtonHandle& button, bool down)
+{
+    if (button == ButtonHandle::none())
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (MouseButton::is_mouse_button(button))
+    {
+        if (button == MouseButton::one())
+        {
+            io.MouseDown[0] = down;
+        }
+        else if (button == MouseButton::three())
+        {
+            io.MouseDown[1] = down;
+        }
+        else if (button == MouseButton::two())
+        {
+            io.MouseDown[2] = down;
+        }
+        else if (button == MouseButton::four())
+        {
+            io.MouseDown[3] = down;
+        }
+        else if (button == MouseButton::five())
+        {
+            io.MouseDown[4] = down;
+        }
+        else if (down)
+        {
+            if (button == MouseButton::wheel_up())
+                io.MouseWheel += 1;
+            else if (button == MouseButton::wheel_down())
+                io.MouseWheel -= 1;
+            else if (button == MouseButton::wheel_right())
+                io.MouseWheelH += 1;
+            else if (button == MouseButton::wheel_left())
+                io.MouseWheelH -= 1;
+        }
+    }
+    else
+    {
+        io.KeysDown[button.get_index()] = down;
+
+        if (button == KeyboardButton::control())
+            io.KeyCtrl = down;
+        else if (button == KeyboardButton::shift())
+            io.KeyShift = down;
+        else if (button == KeyboardButton::alt())
+            io.KeyAlt = down;
+        else if (button == KeyboardButton::meta())
+            io.KeySuper = down;
+    }
+}
+
+void Panda3DImGui::on_keystroke(wchar_t keycode)
+{
+    if (keycode < 0 || keycode >= (std::numeric_limits<ImWchar>::max)())
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddInputCharacter(keycode);
+}
+
 bool Panda3DImGui::new_frame_imgui()
 {
     if (root_.is_hidden())
         return false;
 
-    update_imgui();
-
-    ImGui::NewFrame();
-
-    throw_event_directly(*EventHandler::get_global_event_handler(), NEW_FRAME_EVENT_NAME);
-
-    return true;
-}
-
-void Panda3DImGui::update_imgui()
-{
     static const int MOUSE_DEVICE_INDEX = 0;
 
     ImGuiIO& io = ImGui::GetIO();
@@ -340,6 +346,12 @@ void Panda3DImGui::update_imgui()
             io.MousePos.y = -FLT_MAX;
         }
     }
+
+    ImGui::NewFrame();
+
+    throw_event_directly(*EventHandler::get_global_event_handler(), NEW_FRAME_EVENT_NAME);
+
+    return true;
 }
 
 bool Panda3DImGui::render_imgui()
@@ -423,66 +435,49 @@ bool Panda3DImGui::render_imgui()
     return true;
 }
 
-void Panda3DImGui::on_button_down_or_up(const ButtonHandle& button, bool down)
+void Panda3DImGui::setup_font_texture()
 {
-    if (button == ButtonHandle::none())
-        return;
-
     ImGuiIO& io = ImGui::GetIO();
-    if (MouseButton::is_mouse_button(button))
-    {
-        if (button == MouseButton::one())
-        {
-            io.MouseDown[0] = down;
-        }
-        else if (button == MouseButton::three())
-        {
-            io.MouseDown[1] = down;
-        }
-        else if (button == MouseButton::two())
-        {
-            io.MouseDown[2] = down;
-        }
-        else if (button == MouseButton::four())
-        {
-            io.MouseDown[3] = down;
-        }
-        else if (button == MouseButton::five())
-        {
-            io.MouseDown[4] = down;
-        }
-        else if (down)
-        {
-            if (button == MouseButton::wheel_up())
-                io.MouseWheel += 1;
-            else if (button == MouseButton::wheel_down())
-                io.MouseWheel -= 1;
-            else if (button == MouseButton::wheel_right())
-                io.MouseWheelH += 1;
-            else if (button == MouseButton::wheel_left())
-                io.MouseWheelH -= 1;
-        }
-    }
-    else
-    {
-        io.KeysDown[button.get_index()] = down;
 
-        if (button == KeyboardButton::control())
-            io.KeyCtrl = down;
-        else if (button == KeyboardButton::shift())
-            io.KeyShift = down;
-        else if (button == KeyboardButton::alt())
-            io.KeyAlt = down;
-        else if (button == KeyboardButton::meta())
-            io.KeySuper = down;
-    }
+    unsigned char* pixels;
+    int width, height;
+    io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
+
+    font_texture_ = Texture::make_texture();
+    font_texture_->set_name("imgui-font-texture");
+    font_texture_->setup_2d_texture(width, height, Texture::ComponentType::T_unsigned_byte, Texture::Format::F_red);
+    font_texture_->set_minfilter(SamplerState::FilterType::FT_linear);
+    font_texture_->set_magfilter(SamplerState::FilterType::FT_linear);
+
+    PTA_uchar ram_image = font_texture_->make_ram_image();
+    std::memcpy(ram_image.p(), pixels, width * height * sizeof(decltype(*pixels)));
+
+    io.Fonts->TexID = font_texture_.p();
 }
 
-void Panda3DImGui::on_keystroke(wchar_t keycode)
+NodePath Panda3DImGui::create_geomnode(const GeomVertexData* vdata)
 {
-    if (keycode < 0 || keycode >= (std::numeric_limits<ImWchar>::max)())
-        return;
-
     ImGuiIO& io = ImGui::GetIO();
-    io.AddInputCharacter(keycode);
+
+    PT(GeomTriangles) prim = new GeomTriangles(GeomEnums::UsageHint::UH_stream);
+
+    static_assert(
+        sizeof(ImDrawIdx) == sizeof(uint16_t) ||
+        sizeof(ImDrawIdx) == sizeof(uint32_t),
+        "Type of ImDrawIdx is not uint16_t or uint32_t. Update below code!"
+        );
+    if (sizeof(ImDrawIdx) == sizeof(uint16_t))
+        prim->set_index_type(GeomEnums::NumericType::NT_uint16);
+    else if (sizeof(ImDrawIdx) == sizeof(uint32_t))
+        prim->set_index_type(GeomEnums::NumericType::NT_uint32);
+
+    prim->close_primitive();
+
+    PT(Geom) geom = new Geom(vdata);
+    geom->add_primitive(prim);
+
+    PT(GeomNode) geom_node = new GeomNode("imgui-geom");
+    geom_node->add_geom(geom, RenderState::make_empty());
+
+    return NodePath(geom_node);
 }

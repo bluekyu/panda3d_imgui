@@ -78,11 +78,8 @@ public:
     const LVecBase2& get_dropped_point() const;
 
 private:
-    NodePath create_geomnode(const GeomVertexData* vdata);
-
     void setup_font_texture();
-
-    void update_imgui();
+    NodePath create_geomnode(const GeomVertexData* vdata);
 
     ImGuiContext* context_ = nullptr;
 
