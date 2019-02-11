@@ -40,6 +40,13 @@ cmake --build . --config release --target install
    (You may need to set up Panda3D and ImGui runtime path)
 
 
+## Other Samples
+### [Render Pipeline C++](https://github.com/bluekyu/render_pipeline_cpp)
+You can find sample code using `Panda3DImGui` class in [imgui plugin](https://github.com/bluekyu/render_pipeline_cpp/tree/master/src/rpplugins/imgui).
+Also, there is sample codes that use ImGui for Panda3D data in [rpstat plugin](https://github.com/bluekyu/render_pipeline_cpp/tree/master/src/rpplugins/rpstat)
+
+![rpstat](https://user-images.githubusercontent.com/937305/44767336-6d2f5f80-ab98-11e8-89dd-3979cbd9e626.png)
+
 
 ## License
 See `LICENSE.md` file.
