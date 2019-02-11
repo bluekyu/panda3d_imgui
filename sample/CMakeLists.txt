@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(test_panda3d_imgui
+project(panda3d_imgui_sample
     DESCRIPTION "Empty example without Render Pipeline C++"
     LANGUAGES CXX
 )
