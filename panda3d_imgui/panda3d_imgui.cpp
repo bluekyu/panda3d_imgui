@@ -119,7 +119,8 @@ Panda3DImGui::~Panda3DImGui()
         {
             window_->remove_window_proc(window_proc_.get());
             window_proc_.reset();
-            DragAcceptFiles((HWND)window_->get_window_handle()->get_int_handle(), FALSE);
+            if (auto handle = window_->get_window_handle())
+                DragAcceptFiles((HWND)handle->get_int_handle(), FALSE);
         }
     }
 #endif
