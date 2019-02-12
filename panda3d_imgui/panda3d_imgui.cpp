@@ -24,6 +24,8 @@
 
 #include "panda3d_imgui.hpp"
 
+#include <cstring>
+
 #include <imgui.h>
 
 #include <throw_event.h>
@@ -147,8 +149,6 @@ void Panda3DImGui::setup_style(Style style)
 
 void Panda3DImGui::setup_geom()
 {
-    ImGuiIO& io = ImGui::GetIO();
-
     PT(GeomVertexArrayFormat) array_format = new GeomVertexArrayFormat(
         InternalName::get_vertex(), 4, Geom::NT_stdfloat, Geom::C_point,
         InternalName::get_color(), 1, Geom::NT_packed_dabc, Geom::C_color
@@ -377,7 +377,7 @@ bool Panda3DImGui::render_imgui()
     {
         const ImDrawList* cmd_list = draw_data->CmdLists[k];
 
-        if (!(k < geom_data_.size()))
+        if (!(k < static_cast<int>(geom_data_.size())))
         {
             geom_data_.push_back({
                 new GeomVertexData("imgui-vertex-" + std::to_string(k), vformat_, GeomEnums::UsageHint::UH_stream),
@@ -402,7 +402,7 @@ bool Panda3DImGui::render_imgui()
             const ImDrawCmd* draw_cmd = &cmd_list->CmdBuffer[cmd_i];
             auto elem_count = static_cast<int>(draw_cmd->ElemCount);
 
-            if (!(cmd_i < geom_list.nodepaths.size()))
+            if (!(cmd_i < static_cast<int>(geom_list.nodepaths.size())))
                 geom_list.nodepaths.push_back(create_geomnode(geom_list.vdata));
 
             NodePath np = geom_list.nodepaths[cmd_i];
@@ -458,8 +458,6 @@ void Panda3DImGui::setup_font_texture()
 
 NodePath Panda3DImGui::create_geomnode(const GeomVertexData* vdata)
 {
-    ImGuiIO& io = ImGui::GetIO();
-
     PT(GeomTriangles) prim = new GeomTriangles(GeomEnums::UsageHint::UH_stream);
 
     static_assert(
